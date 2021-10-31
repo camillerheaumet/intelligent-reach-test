@@ -1,11 +1,15 @@
 import { Injectable } from "@angular/core";
-import { of, combineLatest} from "rxjs";
+import { Observable, of, combineLatest} from "rxjs";
 import { map } from "rxjs/operators";
+import { Product } from '../product';
 
-@Injectable()
+@Injectable({
+  providedIn: 'root',
+  useFactory: () => new ProductsService()
+})
 export class ProductsService {
 
-  public getProducts() {
+  public getProducts(): Observable<Product[]> {
     return of([
       {
         id: "AC7655_580",
@@ -77,7 +81,34 @@ export class ProductsService {
       }));
 
   }
+
+  searchProducts(formValues: Object): Observable<Product[]> {
+    let term = formValues['term'].toLowerCase();
+    const brand = formValues['brand'].toLowerCase();
+    const stock = formValues['stock'].toLowerCase();
+
+    if (!term.trim() || term.length < 3) {
+      term = '';
+    }
+
+    return this.getProducts().pipe(
+      map(products => 
+        products.filter(product => {
+          const isIncludedName = product.name.toLowerCase().includes(term);
+          const isIncludedDescription = product.description.toLowerCase().includes(term);
+          const isIncludedBrand = product.brand.toLowerCase().includes(term);
+          const isBrandStrict = product.brand.toLowerCase() === brand;
+          const stockCondition = stock === 'in-stock' ? product.quantity > 0 : stock === 'out-of-stock' ? product.quantity <= 0 : true;
+          
+          const isIncludeAll = isIncludedName || isIncludedDescription || isIncludedBrand
+          const isIncludeStrict = (isIncludedName || isIncludedDescription) && isBrandStrict
+
+          return (brand === 'all' ? isIncludeAll : isIncludeStrict) && stockCondition;
+        }
+      ))
+    )
+  }
 }
 
 const getProduct = of("product1");
-const getQuantity = of(2, 8);
+const getQuantity = of(8, 8);
